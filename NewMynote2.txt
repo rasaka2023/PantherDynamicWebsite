@@ -1,0 +1,457 @@
+       #####################################CLOUDSPACE PROJECT1 ##############################
+
+             ############# Foundation and Infrastructure########
+
+
+
+
+             ################### Part#1 of the Project#1: IAM roles, Permissions , Users, and Groups################
+
+A.CloudSpace Engineers Cluster_Name(Panther): Full Admin Access but not Billing 
+	a.Create User Group name << Panther-group>> 
+	b.Create username <<panther-user>>----> Attached to the Panther-Group
+	c.Create role and attach the policy. Use policy generator that will give with FullAdmin Access  without billing and associate it to the panther-group role
+
+B. NAS Financial Group Security Team 
+	a.Create User Group name << NAS-Financial-Group-Security-Team-group >> 
+	b.Create IAM  user name <<NAS-Financial-Group-Security-Team-user>> —--->Attach to the  group<< NAS-Financial-Group-Security-Team-group>> 
+	c.Remark: Give the group full admin access including billing.
+	
+C. NAS Financial Group Operation
+	a.Create User Group name << NAS-Financial -Group-Operations-Team-group>>             
+	b.Create IAM user name <<NAS-Financial –Group-Operations-Team-user>>and associate it to the user group << NAS-Financial –Group-Operations-Team-group >> 
+	c. Create a managed policy using policy generator to give FullAdminAccess 
+Remark:to deploy  ONLY in us-east-1 Region and NOT be able to launch in ANY other Region (NAS Financial Group accounts) —-- Attach it to  the group.
+
+Remarks about tow method to assign permission: 
+	a.Create a role with required permission and attach it to your desire group
+	b. Create the policy and attach directly to the desired group
+
+            #################### Part#2 of the Project#1: Build a public HA,Secured dynamic website.####################
+
+Remark:  ----> We will first create our  Static wesite using AWS S3 bucket.
+	 ---> Make sure to buy a domain name and register it. 
+	 ----> Buy domain name from AWS using Route 53
+         ---->You can use any previous domain name that you have and just import it to AWS as well.
+
+            ################## Step to create S3 Bucket in AWS#############
+
+
+	 ----> Create your main bucket name "panthergroupproject1" (in us-east-1) for actual static website  and "panthergroupproject1-Replica" (in us-east-2) for read replica 
+Remarks: ----> Make sure to enable versioning to prevent accident deletion of the data in the bucket)
+	 ----> Select appropriate region for the bucket to reside in.
+	 ----> Click create bucket. And Bucket shouls be created.
+
+           ################### Step to make our  Bucket Public and enable static hosting ( This allow to make our bucket Public)######################
+
+        a. Making Bucket Public From Permissions tap
+
+        ----> Go to bucket
+-	----> Select Permission
+	----> On "Block public access( bucket setting" click on "Edit" and then "uncheck the box"
+	----> Then comfirm and save you change. At this stage your bucket still not fully public yet, until you create "Bucket Policy"
+	----> From "Bucket permission": Use AWS policy generator to create the bucket policy/permission to "Getbucket" or use "Chat GPT to get the JSON code you need for your policy" or 
+	----> or Click on  " Learn more" from "Bucket policy" to get the code from the whitepaper.
+        ----> The following should be the code that you will obtain: replace " your-bucket-name" with your actual bucket name in this case "pantherproject1"
+	----> From " Bucket Policy"----> Click "Edit" and then Past your JSON code ( The one below)
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::panthergroupproject1/*"
+    }
+  ]
+}
+
+	----> Then Click "Save Change"
+
+	b. Enabling Static website Host from Properties tap
+      
+	----> Go to "properties" and 
+	----> Scroll all way down to the bottom of your page : : You will see : "Disable"
+	----> Click "Edit" on "Static website hosting."
+	----> Click "Enable"
+	----> Notice Extra setting that will show up after clicking on "Enable"
+	----> Set the index document (e.g., "index.html")
+	----> Save your changes
+	----> You should now see a link for your website below the " Static website hosting":----> http://panthergroupproject1.s3-website-us-east-1.amazonaws.com
+
+         ################# Step to create your AWS TLS/SSL ACM Certificate############
+
+Parameter to select and what to click: 
+
+	----> From Service search bar, find  "ACM"
+	----> Click "Request" 
+	----> Notice "Request a public certificate" and click "Next"
+	----> Notice " Notice names"
+	----> Enter you both your domain and the another sub-domain that you will like your website to cover down later on : "rasakacloudtech.net"( for actual domain name)  and "*.rasakacloudtech.net" ( for all future sub-domain name)
+	----> For "Validation method" Select "DNS validation" ( Quicker Validation method. DONT select the email option because it will take several days)
+	----> Select "RSA 2048"
+	----> Tag if necessary (Optional BUT FOR BEST PRACTICE Tag it)----> "pantherproject1-cert"
+	----> Click "Request"
+	----> Notice "Pending Validation" on the status( \on this stage the Certificate is not useful yet)
+	----> Open the Created certificate
+	----> Then click on  "Create a record in route 53"
+	----> Then "Click Create Record" (This will create CName automatically for you in Route 53 record)
+	----> Verify that certificate status said -----> "Issue" ( Now the certificate is useful)
+
+
+      ####### First method: Step to create AWS Cloudfront Distribution##### 
+
+	----> From Service search bar, find "Cloudfront"
+	----> Click "Create a Clodfront Distribution" 
+	----> Select the type of distribution you want to create ("Web" or "RTMP." In most cases, you'll choose "Web" for serving web content)
+
+Remark very Important:
+
+	----> We don't want Cloudfront to access directly our S3 bucket instead we want its to use the "S3 endpoint" therefore:
+	----> Stop at the current page
+	----> Then open new tap to open access your S3 bucket page
+	----> Now how do we get the "S3 enpoint"?
+
+	----> From S3 "properties" scroll down to the botton  
+	----> And find the link below "Static website hosting" : http://panthergroupproject1.s3-website-us-east-1.amazonaws.com
+	----> Copy the link without the "http://" 
+	----> You should have  "panthergroupproject1.s3-website-us-east-1.amazonaws.com"   http://panthergroupproject1.s3-website-us-east-1.amazonaws.com
+	----> Go back to previous page for "Cloudfront" when you stopped
+	----> And paste "panthergroupproject1.s3-website-us-east-1.amazonaws.com"  
+
+Remark very Important about things to DO or to SELECT:Everything else LEAVE it default but  you will need select/check the following things:
+
+	----> From "Default Cache behavior Setting"
+	----> Click/Check  "Redirect HTTP to HTTPS"
+
+	----> From the same page under "Setting" 
+	----> Notice "Alternate domain name (CNAME)" ---> This is optional but it is good to do it if you want to.
+	----> In this case we can put  "rasakacloudtech.net" ( This will be important when you will try to create record for Cloudfront endpoint)
+
+	----> From "Settings"
+	----> Notice "Custom SSL certificate" (This is where you can Offload your ACM CERT into your Cloudfront)
+	
+
+	----> From "Cache key and origin requests"
+	----> Select "Cache policy and origin request policy (recommended)"
+	----> Then Select "CacheingOptimized" from Cache Policy
+	----> Click "Create distribution"
+	----> Then your Cloudfront is created
+
+	---> From "Web Application Firewall(WAF)
+	---> Select either "Do not enable security protection" or "Enable security protection"
+
+Remark: I decided to go with "Do not enable security protection" for purpose and avoid mistakleing congiguring setting that will accumulate charges in my accounts.
+
+	----> Try your website using the domain name from Cloudfront that you just created: "d2xywqar74rlv4.cloudfront.net"
+	----> You should see your Website with Secure lock in front of it.
+
+Remark: If you use the previous  link : "http://panthergroupproject1.s3-website-us-east-1.amazonaws.com "
+	----> You should get the same result from the Cloudfront link
+
+Remark: But we want to have a single link for our website.
+
+	----> As for know we have 2 website links for our clients, which is not the best practice: One from the S3 directly and the other from the Cloudfront
+	----> To have only 1 link to the website, We can create a record in Route 53.
+	----> By doing this, it will connect our Cloudfront to our Route 53
+
+Remark: Try using our register domain: ---> we should see "You're not connected" message
+
+	----> Go to Route 53
+	----> Click select your register website here we have "rasakacloudtech.net"
+	----> Click on "Create Record"
+	----> Select "Alias"
+	----> From "Quick create record", Select " Alias to to CloudFront Distribution"----> this will establish connection between our Route 53 to Cloudfront
+	----> Select the cloudfront endpoint "d2qyu2mnlw49dg.cloudfront.net"
+	----> For "Routing policy": Select----> "Simple routing"
+	----> Click "Create Records"
+	----> Now your Cloudfront endpoint will have a friendly name "pantherproject1.rasakacloudtech.net"
+	----> Add "pantherproject1" on your subdomain to obtain pantherproject1.rasakacloudtech.net
+	 
+
+
+      ############### Step to "OFFLOAD"  your TLS/SSL ACM certificate on your Cloudfront############
+
+Remark: Assume you have already create the ACM Cert and Cloudfront but you did not load the certificate on your Cloudfront during creation
+   
+	---> Go to Cloudfront PAGE
+	---> Select the one you just create with SSL/TTL cert
+	---> General page, you will see "Setting"
+	---> Click "Edit"
+	---> Notice "Custom SSL certificate - optional"
+	---> Select your Cert from drop down arrow
+	---> Click on "Save changes"
+	---> Your ACM Cert is now load to your Cloudfront
+
+     ########### Step to "OFFLOAD" your AWS TLS/SSL ACM Certificate  on ALB############
+
+        ----> Click Listener to add port 443 for secure
+	----> Select HTTPS
+	----> Select "Forward to target groups"
+	----> Select our create target group here----> “project1-tg”
+	----> Leave "Secure Policy" to the default (recommended)
+	----> Select "Certificate Source" in our case----> "From ACM"
+	----> Select the right certificate from drop down
+	----> Click on "Add"
+
+
+
+      ############ Steps and Continuation of Part#2  BUILDING A STATIC WEBSITE FOR NOT USA CUSTOMERS USING S3 BUCKET##########
+
+	a. Create a Bucket name "panthergroupproject1-bucket" (in us-east-1)  and "panthergroupproject1-bucketReplica" (in us-east-2) 
+Remarks: ----> Make sure to enable versioning to prevent accident deletion of the data in the bucket)
+	 ----> Select appropriate region for the bucket to reside in.
+	 ----> Click create bucket. And Bucket should be created.
+
+	b. Upload static website files to the bucket
+Remarks: 
+	-----> Make sure to encrypt your S3 data you can either use SSE-S3 ( default)  or create SSE-KMS Multiple-Region Key to protect the data at rest in the Buckets/S3
+	-----> Create html file that will display: "Sorry you are not in a country authorized to access this web page"
+	-----> Make sure to enable versioning on your buckets.
+	-----> For best Practice make sure your webite name match your bucket name.( Dont worry about it in this case though if you cant do it, we are practicing)
+
+
+      ################ IMPORTANT THING TO KNOW WHEN CREATING TLS/SSL CERTIFICATE WITH ACM & WHEN TRYING TO "OFFLOAD" CERT ON the ALB###############
+Remarks:
+        ** The representation of all my subdomain will be *.rasakacloudtech.net ( This will allow all subdomain that will derive from domain to work every time)
+	** Make sure to add both "rasakacloudtech.net" and  " *.rasakacloudtech.net" to our certificate
+	** We can use the same certificate for all application or create a new certificate for each application we will create.
+
+
+Remark: if you see "Not Reacheable" on your newly created/added Listener rule to ALB that means our ALB SG is not open yet to 443:
+
+      ############ Steps to take From ALB page if your website still not secure:##################
+
+	----> Go to ALB SG here--->“project1-alb-sg" and make sure to ALLOW 0.0.0.0/0 inbound traffic on port 443 from " Anywhere"
+	----> The "Not reacheable" message shoud be gone
+	d. How to redirect 80 traffic to 443 for our users 
+	----> Click ALB
+	----> Select 80 box
+	----> Select Manage rules
+	----> Select Edit Rule
+	----> Select "Default" box
+	----> Select Action and Select Edit rule
+	----> Select "Redirect to URL"
+	----> Select "Full URL"
+	----> Click on "Save Change"
+If our website still not secure ( which might be the case because our certificate does not cover .com), now we need to create CName (a record for our ALB DNS name)in Route 53:
+Step to the create record  ALB DNS:	
+	----> Go to Route 53
+	----> Click create record "Friendly name for your  ALB DNS" aka " "Alias"---> “panthergroupproject1website.rasakacloudtech.net”
+	----> Select "Alias"
+	----> From Alias drop down: select "Alias to Application and Classic Load Balancer"
+	----> Select the right region where you created ALB in our case--->us-east-1 (N.Virginia)
+	--—-> Make sure choose the ALB 
+	----> Then select " Create a record"
+	----> Notice the newly created record on your record page
+	----> Copy the newly Alias in this case and paste it into your web browser----> “panthergroupproject1.rasakacloudtech.net”
+	----> You should see the key lock next to your newly website Alias 
+	----> Now you are good to go.----> Website should be encrypted now.
+
+
+
+       #################### CONTINUATION OF PART#2 & STEPS TO BUILDING A DYNAMIC WEBSITE##############
+
+
+1- Create Database "project1pantherdb2023" with "project1-db-sg"
+Important Warning: Make sure to give a name to your database. if you dont it, AWS will not create Database.
+
+	a- Create a db subnet group "project1-pub-rds-sub-group"
+Reamark:----->( Make sure to verify your subnet to select the right ones)
+	-----> create a third AZ for your RDS to make your RDS mULIT-az
+	b- Create a security group "project1-db-sg2" that trust "project1-pub-web-sg" on 3306
+Remark:----> make sure to select MYSQL/Aurora on INb rule setting
+
+	c- Create a secret manager to store our db credential
+		check the box "Manage master credentials in AWS Secrets Manager"
+Remark: ----> We need to create a KMS-Key and Store it into Secret Manager.
+
+2- Create an EC2 instances with project1-pub-web-sg that allows project1-alb-sg on port 80
+Warning: please use <<Amazon Linux 2 AMI>>-----> "project1-linux2AMI-ec2"
+		
+	a- Try connectivity to your DB from EC2
+		- sudo yum install mysql----> this will allow my EC2 to talk/connect to my DB
+Remark: ----> replace database-1 with new database name/endpoint here "project1pantherdb2023.cbcbxofcnpt4.us-east-1.rds.amazonaws.com"
+		- mysql -h hostname -u admin -p  (mysql -h database-1.cbcbxofcnpt4.us-east-1.rds.amazonaws.com -u admin -p )
+                                                  mysql -h project1pantherdb2023.cbcbxofcnpt4.us-east-1.rds.amazonaws.com -u admin -p
+
+
+3- Create EFS "project1-efs" with its security group "project1-efs-sg1" that allows web-sg(project1-pub-web-sg) on port 2049 only
+	a- create a security group "project1-efs-sg1"
+Remark: ---->while creating our EFS We should customize our file, dont click on defaults
+		-----> Make sure to click on "Enable encryption of data at rest" this is best practice for production
+		-----> Make sure to create your KMS if you you dont already have one yet
+		-----> Make sure to put your " project1-efs"  "NETWORK ACCESS" in the private subnet this is best practice for production(In our case for lab purpose we can select either private or public as also we are in the same AZ for both Private and Public subnets)
+		---->  After create the EFS "project1-efs" make sure to attach to where you want too( in our case here it our EC2)
+4- Attach EFS to your EC2 instance
+	a- login to your EC2 instance and create directory by running the command below:
+		sudo mkdir /var/www/
+		sudo mkdir /var/www/html/
+	b- Let's check the mounted partition by typing the following command:
+		df -Th
+	c- Install the amazon-efs-utils package
+		sudo yum install -y amazon-efs-utils
+		
+*****There 3 options on how to mount our EFS on EC2 instance*****
+
+	d- Let's mount our Amazon EFS file System on EC2
+Remark1: First method ( If you will be using EFS MOUNT HELPER): 
+	---->  If the command is not working use the "IP mounting option":
+         ----> Make sure to properly edit the EFS attaching/mounting command:
+	 ----> Command given by AWS:       -----> sudo mount -t efs -o tls fs-0e56deaccc5cbfd15:/ efs  ( Replace the "efs" with "/var/www/html/") the following code in next line
+         ----> Command should be edited to:-----> sudo mount -t efs -o tls fs-0e56deaccc5cbfd15:/ /var/www/html/
+
+Remark2: Second method ( If you will BE USING MOUNT VIA IP Address):
+       -----> sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport 10.0.0.80:/ efs ( Replace "efs" with "/var/www/html/")
+       -----> sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport 10.0.0.80:/ /var/www/html/
+
+
+
+Remark3: Thrid method ( If you will BE USING NFS CLIENT)
+	----> If the command is not working use the "IP mounting option":
+	----> Command given by AWS: sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0e56deaccc5cbfd15.efs.us-east-1.amazonaws.com:/ efs ( Replace "efs" with "/var/www/html/")
+        ----> Command edit to    :  sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0e56deaccc5cbfd15.efs.us-east-1.amazonaws.com:/ /var/www/html/
+
+Remark4: After mounting my EFS everything that suppose to be stored in my EC2 EBS, will now automatically be stored in the EFS instead.     
+
+5- EC2 Instance to Auto Mount the file system whenever it gets rebooted due to any reasons.( This below step allow to remount EFS evertime when we reboot our EC2)
+
+Remark: The "fstab"  will be the one to use to remounting everytime ( this will hold and know of all of our partition)	
+
+	a- Let's edit the "fstab" file in linux
+	-----> sudo vi /etc/fstab
+	<file_system_id>.efs.<region>.amazonaws.com:/ /var/www/html/ efs defaults,_netdev 0 0
+
+result:  ------> fs-0e56deaccc5cbfd15.efs.us-east-1.amazonaws.com:/ /var/www/html/ efs defaults,_netdev 0 0
+
+******************fs-0e56deaccc5cbfd15.efs.us-east-1.amazonaws.com:/ /var/www/html/ efs defaults,_netdev 0 0***********
+
+Remark: To insert the above file do the following after copy and past the "sudo vi /etc/fstab" command:
+	----> click on "i"
+	----> Scroll your mouse to the end of the file using the keyboard up, down, and forward arrows" in this  after "1 1"
+	----> Then Click "Enter"  twice
+	---->  Then past your file there. In our case we have the following: "fs-0e56deaccc5cbfd15.efs.us-east-1.amazonaws.com:/ /var/www/html/ efs defaults,_netdev 0 0"
+	----> Click " esc bottom"
+	----> Press " : " from your keyboard
+	----> Then type : "wq" and press "Enter"
+
+Remark: To see what is inside of the  "/etc/fstab"----> use command "cat /etc/fstab"
+
+Result: You should see the two partition on your EC2: one with ending " 0  0" and the other one with end "1  1"
+
+6- Now let Install appache
+	
+	sudo yum install -y httpd
+	sudo systemctl start httpd
+	sudo systemctl enable httpd
+	sudo systemctl status httpd
+
+7- Create a Target Group "project1panther-tg" and ALB "project1panther-alb"
+	test it
+
+8- Download and Configure WordPress
+
+	sudo wget https://wordpress.org/latest.tar.gz
+	sudo tar -xzf latest.tar.gz
+	sudo cd wordpress
+	sudo cp wp-config-sample.php wp-config.php------> this is the file that will hold our database
+	sudo cp -r wordpress/* /var/www/html/ ----> This will allow to copy everything under wordpress and past them on /var/www/html/
+
+
+NB: Make sure you restart httpd
+	sudo systemctl restart httpd
+	---->sudo cp wp-config-sample.php wp-config.php----> this is the file that will hold our database
+	
+9- install the application dependencies for wordpress
+
+	sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+	
+
+NB: Make sure you restart httpd
+      ------>sudo systemctl restart httpd
+
+10- Test is using the ALB DNS 
+
+11- Notice the Error Connection to the database
+	Error establishing a database connection
+
+	a- let edit the "wp-config.php" with our database information
+		sudo vi /var/www/html/wp-config.php
+		sudo cat /var/www/html/wp-config.php-----> This will allow to confirm what you just did and show you what you have inside of your file
+
+Remarks: These are the 4 things that we need to change
+	-For Database name----> Go to " Configuration" on DB page
+	-For username----> Go to "Secret manager" to retrieve it.
+	-For Password----> Go to "Secret Manager" to retrieved it
+	-For LocalHost----> Go to "Connectivity& Security" on DB page
+
+
+       ###################Part#3 of the project: Use the same principle for Part#3 but this time our websire should not be Public accessible and we allow port 80################
+
+1. Use the same infrastructure That we used for dynamic website.
+Remark important: ---> EC2 instance will be in Private Subnet this time
+	          ---> Create the NAT Gateway and place it in Public subnets: This will allow the server hosting to download and update packages on the internet
+	          ---> Allow the web security group to allow traffic from port 80
+		  --->
+
+
+
+      ################### Step to create our Environment/Foundation################
+
+	a. Create 2 private subnets "project1-priv-sub1: and project1-priv-sub2"
+	b. Create 2 SGs one for the ALB and the other one for Web:
+
+		----> Create ALB SG ----> "project1-intranet-alb-sg" allow traffic from everywhere on port 80
+		----> Create Web SG ----> "project1-priv-web-sg" that will trust intranet ALB "project1-intranet-alb-sg" on port 80
+		----> Create TG from Private EC2  "project1-priv-tg"
+		----> Create Intranet ALB "project1-intranet-alb"
+		----> Create  EC2 on the private subnet " project1-priv-LinuxEc2"
+		----> Create EFS "project1-priv-efs"
+
+	c. Create two NAT-gateway in the public subnets: "project1-nat1" and "project1-nat2"
+	d. Create Elastic IP and attach to the NATs
+	e. Create Intranet ALB "project1-intranet-alb"-----> (This is optional but good practice to allow even distribution of the load in to our prite EC2 instance.)
+	e. Create RDS in the private subnet
+                -----> Create a db subnet group "project1-priv-rds-sub-group"
+	        -----> Create a security group "project1-db-sg2" that trust "project1-pub-web-sg" on 3306
+
+Remark very Important: We will use the bostion Host to connect to our private application/ website/Database
+       ############ Step to use Bastion Host#################
+	1. Creat our  EC2 instance in the Public and name irt : "PantherBastionHost-ec2"
+	2. Make sure the  EC2 instace can be connect through either, " EC2 INSTANCE CONNECT" OR SEESSION MANAGER" OR "SSH CLIENT" (MobaXTerm)
+	3. Test if the Bastion host has access to the internet. example : "ping google.com"
+	4. Crtl "C" to stop the ping
+	5.  SSH now into your private Ec2 instance from the BASTION HOST instance " PantherBastionHost-ec2". 
+		*********How to do that:
+			a. Type nano panther-key.pem and  hit enter. ----> this will allow to create and store a text file within the  terminal. We need to upload  our panther-key pair so we can reference it when we SSH into the private instance
+ 
+                        b. Hold ctrl and Press "X" to exit. Save the content by press "Y" for yes. Then press "Enter:
+
+
+	6. Type "chmod 400 panther-key.pem and press "Enter".--->This remove access for other and only allows read access to us.
+	7. Copy the Private IP address of your private Ec2 instance
+	8. Type "ssh ec2-user@PrivateIP -i panther-key.pem" after connect to your Bastion Host
+	9. Then you will be asked " Are your sure you want ot continue connecting ( yes/no/[fingerprint])?--- Enter "yes"
+	Then you will be connect to your privare ec2.
+vis
+Now you can Mount you EFS INTO YOUR PRIVATE ec2 USING THE SAME PRICIPLE IN PART#2
+Now you can connect to Your DB using the same pricple in part#2			
+
+
+
+
+#####Part#4 of the project: We have not not consolidate the final cheat sheet for it
+
+		----> Create AWS Organization and invite the  N2G Auditing group
+		----> Create IAM role  that will allow auditing TO N2G Auditing and Attached
+
+
+#####Part#5 of the project:
+We will be using S3 first then you lifecycle policy to allow the file to be moved to Clacier Archived.
+
+
+
+
+
+
